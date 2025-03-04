@@ -1,0 +1,76 @@
+
+local frutasCaras = {
+    ["Leopard"] = 5000000, 
+    ["Dragon"] = 3000000, 
+    ["Dough"] = 2700000, 
+    ["Shadow"] = 2600000, 
+    ["Venom"] = 2500000, 
+    ["Control"] = 3200000, 
+    ["Soul"] = 3400000
+}
+
+local activado = false
+local tiempoInicio = tick() -- Guarda el tiempo actual
+local tiempoMaximo = 900 -- 15 minutos (900 segundos)
+
+-- Crear botón UI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = game.CoreGui
+
+local Boton = Instance.new("TextButton")
+Boton.Parent = ScreenGui
+Boton.Size = UDim2.new(0, 200, 0, 50)
+Boton.Position = UDim2.new(0.5, -100, 0.8, 0)
+Boton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+Boton.Text = "Activar Buscador"
+Boton.TextColor3 = Color3.fromRGB(255, 255, 255)
+Boton.TextScaled = true
+
+-- Función para buscar frutas
+function buscarFrutas()
+    for _, fruta in pairs(game.Workspace:GetChildren()) do
+        if fruta:IsA("Tool") and frutasCaras[fruta.Name] then
+            warn("🔥 ¡Fruta encontrada! --> " .. fruta.Name .. " | Valor: $" .. frutasCaras[fruta.Name])
+            
+            -- Teletransportar al jugador
+            game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = fruta.Handle.CFrame
+            tiempoInicio = tick() -- Reiniciar tiempo si encuentra una fruta
+            return true
+        end
+    end
+    return false
+end
+
+-- Función para cambiar de servidor
+function cambiarServidor()
+    warn("⏳ No se encontraron frutas en 15 minutos. Cambiando de servidor...")
+    local Http = game:GetService("HttpService")
+    local Servers = Http:JSONDecode(game:HttpGet("https://games.roblox.com/v1/games/2753915549/servers/Public?sortOrder=Asc&limit=100"))
+
+    for _, server in pairs(Servers.data) do
+        if server.id ~= game.JobId and server.playing < server.maxPlayers then
+            game:GetService("TeleportService"):TeleportToPlaceInstance(game.PlaceId, server.id)
+            return
+        end
+    end
+end
+
+-- Activar/Desactivar con el botón
+Boton.MouseButton1Click:Connect(function()
+    activado = not activado
+    if activado then
+        Boton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+        Boton.Text = "Desactivar Buscador"
+        while activado do
+            local encontrada = buscarFrutas()
+            if not encontrada and (tick() - tiempoInicio) >= tiempoMaximo then
+                cambiarServidor()
+                return
+            end
+            wait(10) -- Escanea cada 10 segundos
+        end
+    else
+        Boton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
+        Boton.Text = "Activar Buscador"
+    end
+end)
